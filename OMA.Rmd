@@ -1,0 +1,187 @@
+---
+title: 'IBM Capstone Project: Battle of the Neighborhoods'
+date: '30 June, 2021'
+output:
+  html_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+subtitle: "Chicago Neighborhood Opportunity Fund Allocation"
+authors: 'Jerome Finn'
+---
+## Introduction
+
+### Input-Output
+
+#### Input  
+
+./data/ltdb/colorcode.csv  
+./data/ltdb/ltdb_tracts_labeled.csv  
+
+#### Output  
+./data/ltdb/ltdb_series.RDS  
+./data/ltdb/differenceMatrix.RDS  
+./data/ltdb/ltdb_seq_cluster.RDS 
+./data/img/seqrplot.jpg
+
+### Summary
+
+See the main part of this project in [Capstone_BattleOfNeighborhoods.ipynb](Capstone_BattleOfNeighborhoods.html).  
+  
+While researching a topic for this capstone project I came across an academic paper that influenced where millions of dollars of development funds will be used. The "Neighborhood Opportunity Fund" [(NOF)](https://neighborhoodopportunityfund.com) in Chicago can award up to \$2.5 million for individual projects in "Qualified Investment Areas". Information on the program explained that the geographic areas that were choosen to receive the grants was influenced by the study ["Mapping the DNA of Urban Neighborhoods: Clustering Longitudinal Sequences of Neighborhood Socioeconomic Change"](https://www.tandfonline.com/doi/full/10.1080/00045608.2015.1096188) by Elizabeth Delmelle.  
+  
+I'm mostly replicating the study in Python  
+  
+The orginal study used the R programming language and the package TraMineR to execute this algorithm. I didn't find any Python library that implements the algorithm. So at this point anyone executing the Python code would have to stop and continue by executing this R markup file, OMA.Rmd.  
+
+## Setup
+
+```{r setup_libraries, error=FALSE, warning=FALSE, message=FALSE}
+
+library(dplyr)
+library(tidyverse)
+library(TraMineR)
+
+```
+
+## Create OMA Input
+
+Assume we have the file ./data/ltdb/colocode.csv and ./data/ltdb/ltdb_tracts_labeled.csv created by 
+[Capstone_BattleOfNeighborhoods.ipynb](Capstone_BattleOfNeighborhoods.html). The colorcode.csv file is to keep our visualizations consistent with those used in the Python notebook.  
+  
+The ltdb_tracts_labeled.csv file is census tracts over several years classied by social-economic and demographic data using K-means. In the below cell we create series data for each census tract using the years in order. Then we save this dataframe to a RDS file for import into Python for later use. 
+
+
+```{r data_setup, error=FALSE, warning=FALSE, message=FALSE}
+
+colorcode_csv=file.path(".", "data", "ltdb", "colorcode.csv")
+colorcode=read.csv(colorcode_csv, colClasses = c("character","character", "character", "factor"))
+ltdb_tracts_labeled_csv=file.path(".", "data", "ltdb", "ltdb_tracts_labeled.csv")
+ltdb_tracts_labeled=read.csv(ltdb_tracts_labeled_csv, colClasses = c("character", "character", "factor"))
+
+ltdb_series=ltdb_tracts_labeled %>% filter(year==1970) %>% select(CensusTract, label) %>% rename('1970'=label)
+ltdb_series=full_join(ltdb_series, ltdb_tracts_labeled %>% filter(year==1980) %>% select(CensusTract, label) %>% rename('1980'=label), by='CensusTract')
+ltdb_series=full_join(ltdb_series, ltdb_tracts_labeled %>% filter(year==1990) %>% select(CensusTract, label) %>% rename('1990'=label), by='CensusTract')
+ltdb_series=full_join(ltdb_series, ltdb_tracts_labeled %>% filter(year==2000) %>% select(CensusTract, label) %>% rename('2000'=label), by='CensusTract')
+ltdb_series=full_join(ltdb_series, ltdb_tracts_labeled %>% filter(year==2010) %>% select(CensusTract, label) %>% rename('2010'=label), by='CensusTract')
+ltdb_series=full_join(ltdb_series, ltdb_tracts_labeled %>% filter(year==2019) %>% select(CensusTract, label) %>% rename('2019'=label), by='CensusTract')
+
+ltdb_series_rds=file.path(".", "data", "ltdb", "ltdb_series.RDS")
+saveRDS(ltdb_series, file = ltdb_series_rds)
+
+```
+
+## Running the OMA Algorithm
+
+To determine which parameters to use I paid attention to the follow information from Dr. Delmelle's study
+
+Document "Mapping the DNA of Urban Neighborhoods:" Section "Measuring Sequence Similarity"  
+Page 8 on PDF (Page 42 printed in the document)  
+*In this study, a transition rate substitution cost matrix produced the more favorable results.*   
+  
+Page 9 on PDF (Page 43 printed in the document)  
+*"insertion and deletion costs ...In this case, these costs are set at a value of 1"* 
+ 
+Then following the documentation from TraMineR, I concluded I should follow the below example: 
+ 
+Document "Analyzing and Visualizing State Sequences in R with TraMineR"  
+Page 6  
+*2. Compute pairwise optimal matching (OM) distances between sequences with an insertion/*
+*deletion cost of 1 and a substitution cost matrix based on observed transition*
+*rates:*  
+  
+**R> mvad.om <- seqdist(mvad.seq, method = "OM", indel = 1, sm = "TRATE")**
+
+The following cell sets up some custom colors imported from the Python code, then executes algorithm, and saves our difference matrix an RDS file for later import to Python
+
+```{r run_om_algo, error=FALSE, warning=FALSE, message=FALSE}
+
+ltdb.labels=c(colorcode[colorcode['numcode']==0, 'labels'], colorcode[colorcode['numcode']==1, 'labels'], 
+  colorcode[colorcode['numcode']==2, 'labels'], colorcode[colorcode['numcode']==3, 'labels'], 
+  colorcode[colorcode['numcode']==4, 'labels'])
+ltdb.scodes=c(colorcode[colorcode['numcode']==0, 'scode'], colorcode[colorcode['numcode']==1, 'scode'], 
+              colorcode[colorcode['numcode']==2, 'scode'], colorcode[colorcode['numcode']==3, 'scode'], 
+              colorcode[colorcode['numcode']==4, 'scode'])
+ltdb.colors=c(colorcode[colorcode['numcode']==0, 'color'], colorcode[colorcode['numcode']==1, 'color'], 
+              colorcode[colorcode['numcode']==2, 'color'], colorcode[colorcode['numcode']==3, 'color'], 
+              colorcode[colorcode['numcode']==4, 'color'])
+ltdb.seq <- seqdef(ltdb_series, 2:7, states = ltdb.scodes, labels = ltdb.labels, cpal = ltdb.colors)
+dist.om1 <- seqdist(ltdb.seq, method = "OM", indel = 1, sm = "TRATE")
+
+differenceMatrix_rds=file.path(".", "data", "ltdb", "differenceMatrix.RDS")
+saveRDS(dist.om1, file = differenceMatrix_rds)
+
+```
+
+## Clustering
+
+At this point our goal of replicating and updating the original study becomes more complicated due to differences in features in R versus Python libraries. In the study Dr. Delmelle states <<"*In this case, a hierarchical Ward's clustering approach is applied to the data.*">>  This works fine in R using the cluster library and function agnes. In python scikit-learn will only accept a matrix based on euclidean distance when using Ward's method. 
+  
+I'll do the clustering here, write output to an RDS file for later import to the Python main program
+
+
+```{r hiearch_cluster, error=FALSE, warning=FALSE, message=FALSE}
+library(cluster)
+clusterward1 <- agnes(dist.om1, diss = TRUE, method = "ward")
+cl1.10 <- cutree(clusterward1, k = 10)
+cl1.10fac <- factor(cl1.10, labels = paste("Cluster", 1:10))
+
+ltdb_seq_cluster=data.frame(CensusTract = ltdb_series['CensusTract'], Rseqclust=c(cl1.10))
+ltdb_seq_cluster_rds=file.path(".", "data", "ltdb", "ltdb_seq_cluster.RDS")
+saveRDS(ltdb_seq_cluster, file = ltdb_seq_cluster_rds)
+```
+
+
+## Visualizations
+
+Here I test out the legend. It conforms the colors and labels we imported from the main Python program.
+
+```{r, error=FALSE, warning=FALSE, message=FALSE}
+seqlegend(ltdb.seq)
+```
+
+### Visualize All Sequences
+
+Classifications in Dr. Delmelle's study "DNA of Urban Neighborhoods" don't match up exactly to what we see in our graphic  
+  
+Original|Mine|Description
+--------|----|--------------------
+1. | 7.  | Struggling to Young Urban    
+2. | 6.  | Blue Collar to Young Urban  
+3. | 3.  | Stable Young Urban  
+4. | 4.  | Stable Older Suburban  
+5. | 5.  | Older Suburban to Blue Collar
+6. | 1.  | Stable Struggling  
+7. | 10. | Stable Blue Collar  
+8. | NA  | Blue Collar to Struggling.
+9. | 8.  | New Suburban to Old Suburban  
+10.| 9.  | New Suburban
+NA | 2.  | Plurality Blue Collar with no dominate pattern
+
+```{r all_cluster_all_seq, fig.height=10,fig.width=10, error=FALSE, warning=FALSE, message=FALSE}
+par(mfrow = c(1, 1))
+seqIplot(ltdb.seq, group = cl1.10fac, sortv = "from.start", yaxis=FALSE)
+
+```
+
+### Visualize Dominant Sequences
+
+I don't like the above graphic so we will use the one that filters just the dominant sequences. Default is to display at least up to 25% of the dataset
+
+
+```{r all_cluster_freq_seq, fig.height=10, fig.width=10, error=FALSE, warning=FALSE, message=FALSE}
+seqrplot(ltdb.seq, diss = dist.om1, group = cl1.10fac, border = NA)
+par(mar=c(1,1,1,1))
+```
+
+Very good. Now save this to a JPEG for import into our main report
+
+```{r save_freq_seq_graph, fig.height=10, fig.width=10, error=FALSE, warning=FALSE, message=FALSE}
+seqrplot_jpg=file.path(".", "data", "img", "seqrplot.jpg")
+jpeg(seqrplot_jpg, res=300, width = 2750, height = 3500)
+seqrplot(ltdb.seq, diss = dist.om1, group = cl1.10fac, border = NA, coverage = 0.25)
+dev.off()
+```
+
+
+
