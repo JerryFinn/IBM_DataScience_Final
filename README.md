@@ -17,7 +17,7 @@ This project is not contained in just one notebook.
 To run all the code, the following files are need:
 
 1. `Capstone_BattleOfNeighborhoods.ipynb`: This is the main driving program. It is the notebook that produces the final report
-2. `Census_GeoSpatial.ipynb`: This notebook contains all the calls to GeoPandas. Stack overflow recommended if you had dependencies issue installing Geopandas, but did not want to change your current environment, you could install a 2nd Python environment on your local system. I already had a cloud environment where it worked fine, so I created a separate notebook for GeoPanda calls and ran it in the cloud environment.  
+2. `Census_GeoSpatial.ipynb`: This notebook contains all the calls to GeoPandas. Stack overflow recommended if you had dependencies issue installing Geopandas, but did not want to change your current environment, you could install a 2nd Python environment on your local system. I already had a cloud environment where it worked fine, so I created a separate notebook for GeoPandas calls and ran it in the cloud environment.  
 3. `OMA.Rmd`: Some of the data transformation has to be done in R. 
 
 ### Essential Data Files
