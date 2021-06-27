@@ -38,7 +38,7 @@ Some of the graphics are taken from a previous report and are not generated from
 4. `./data/img/Cluster_Struggling.png`
 5. `./data/img/Figure1_SequenceOfMethodology.png`
 
-### Nonesstial Code
+### Nonessential Code
 
 `NeighborhoodEvolution.ipynb` contains code that produced some models and did some analysis that lead to the decision to abandon those models. It could be interesting for those that want to see more about model selection. 
 
