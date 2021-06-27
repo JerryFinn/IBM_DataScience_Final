@@ -31,12 +31,13 @@ The following files have to exist to run the report. They have to be manually ob
 ### Essential Image Files
 
 Some of the graphics are taken from a previous report and are not generated from the project's code. The images that need to exist prior to execution are:
-
-1. `./data/img/Clusters_all.png`
-2. `./data/img/Cluster_BC_2_Strug.png`
-3. `./data/img/Cluster_BlueCollar.png`
-4. `./data/img/Cluster_Struggling.png`
-5. `./data/img/Figure1_SequenceOfMethodology.png`
+  
+1. `./data/img/ChicagoFromSouth.jpg`
+2. `./data/img/Clusters_all.png`
+3. `./data/img/Cluster_BC_2_Strug.png`
+4. `./data/img/Cluster_BlueCollar.png`
+5. `./data/img/Cluster_Struggling.png`
+6. `./data/img/Figure1_SequenceOfMethodology.png`
 
 ### Nonessential Code
 
